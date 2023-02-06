@@ -1,5 +1,6 @@
 package io.vertx.skeleton.config;
 
+import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.skeleton.models.PersistedRecord;
 import io.vertx.skeleton.models.RepositoryRecord;
 import io.vertx.core.json.JsonObject;

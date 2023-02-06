@@ -1,0 +1,62 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+>
+
+  <!-- Configuration table -->
+  <changeSet id="blob-configuration-table" author="benato.j" context="vertx">
+    <createSequence sequenceName="blob_configuration_seq" schemaName="${schema}"/>
+    <createTable tableName="blob_configuration" schemaName="${schema}">
+      <column type="text" name="name"/>
+      <column type="bytea" name="data"/>
+      <!--  Repository Entity    -->
+      <column type="bigint" name="id" defaultValueSequenceNext="configuration_seq"/>
+      <column type="text" name="tenant"/>
+      <column type="timestamp" name="creation_date" defaultValueComputed="current_timestamp"/>
+      <column type="timestamp" name="last_update" defaultValueComputed="current_timestamp"/>
+      <column type="int" name="version" defaultValue="0"/>
+    </createTable>
+  </changeSet>
+  <changeSet id="blob-configuration-index" author="benato.j" context="vertx">
+    <addPrimaryKey tableName="blob_configuration" columnNames="name, tenant" schemaName="${schema}"/>
+    <createIndex tableName="blob_configuration" indexName="blob-configuration-index" schemaName="${schema}">
+      <column name="name"/>
+      <column name="tenant"/>
+    </createIndex>
+    <createIndex tableName="blob_configuration" indexName="blob-configuration-index-2" schemaName="${schema}">
+      <column name="name"/>
+    </createIndex>
+  </changeSet>
+  <!--  -->
+  <!-- Configuration Publisher -->
+  <changeSet id="blob-configuration-pub-function" author="benato.j" context="vertx">
+    <sql splitStatements="false">
+      CREATE
+      OR REPLACE FUNCTION ${schema}.blob_configuration_publisher()
+    RETURNS trigger AS
+$$
+      BEGIN
+    if (TG_OP = 'DELETE' or TG_OP = 'TRUNCATE') then
+        perform pg_notify('blob_configuration_channel',
+                          concat(OLD.name::text, '::', OLD.tenant::text));
+      else
+        perform pg_notify('blob_configuration_channel',
+                          concat(NEW.name::text, '::', NEW.tenant::text));
+      end if;
+      RETURN null;
+      END;
+$$
+      LANGUAGE plpgsql;
+    </sql>
+  </changeSet>
+  <!--  -->
+  <!-- Configuration Trigger -->
+  <changeSet id="blob-configuration-trigger" author="benato.j" context="vertx">
+    <sql splitStatements="false">
+      CREATE TRIGGER blob_configuration_trigger AFTER INSERT OR UPDATE OR DELETE ON ${schema}.blob_configuration FOR EACH ROW EXECUTE PROCEDURE blob_configuration_publisher();
+    </sql>
+  </changeSet>
+  <!---->
+</databaseChangeLog>
